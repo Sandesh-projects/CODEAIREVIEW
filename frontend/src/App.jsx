@@ -21,10 +21,13 @@ function App() {
   const messagesEndRef = useRef(null); // Ref for scrolling to the latest message in the chat
   const chatInputRef = useRef(null); // Ref for the chat text area
 
-  // Scroll to the bottom of the chat on new messages
+  // Scroll to the bottom of the chat only when a new message is added
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages]); // Dependency on messages ensures scroll on new message
 
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || chatLoading) return;
@@ -42,7 +45,6 @@ function App() {
     setChatLoading(true);
 
     try {
-      // ALWAYS send the message for review, no check for backticks
       const codeContent = userMessage.content; // Treat the entire message as code for review
 
       const response = await axios.post(
@@ -107,7 +109,10 @@ function App() {
               code({ node, inline, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || "");
                 return !inline && match ? (
-                  <div className="rounded-lg overflow-hidden border border-slate-600/50 my-4">
+                  // Block code (with language specified)
+                  <div className="rounded-lg overflow-x-auto border border-slate-600/50 my-4">
+                    {" "}
+                    {/* Changed to overflow-x-auto */}
                     <SyntaxHighlighter
                       language={match[1]}
                       style={oneDark}
@@ -116,6 +121,13 @@ function App() {
                         margin: 0,
                         borderRadius: 0,
                         background: "rgba(15, 23, 42, 0.8)",
+                        padding: "1em", // Add padding to the code block itself
+                        // Removed whiteSpace and wordBreak from here for horizontal scroll
+                      }}
+                      codeTagProps={{
+                        style: {
+                          fontFamily: "monospace", // Ensure monospace font
+                        },
                       }}
                       {...props}
                     >
@@ -123,8 +135,13 @@ function App() {
                     </SyntaxHighlighter>
                   </div>
                 ) : (
+                  // Inline code
                   <code
                     className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded border border-purple-500/30 text-sm"
+                    style={{
+                      whiteSpace: "pre-wrap", // Keep wrapping for inline code
+                      wordBreak: "break-all", // Break long words for inline code
+                    }}
                     {...props}
                   >
                     {children}
@@ -203,6 +220,8 @@ function App() {
           className={`text-slate-200 whitespace-pre-wrap ${
             msg.isExpanded ? "" : "line-clamp-3"
           }`}
+          // Adding word-break for user messages too, in case they paste long un-breakable strings
+          style={{ wordBreak: "break-word" }}
         >
           {msg.content}
         </p>
@@ -224,7 +243,7 @@ function App() {
       <div className='absolute inset-0 bg-[url(&apos;data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Ccircle cx="7" cy="7" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E&apos;)] opacity-20'></div>
 
       {/* Main Content - Takes full width and height */}
-      <div className="relative z-10 w-full h-screen flex justify-center items-center p-4">
+      <div className="relative z-10 w-full h-screen flex justify-center items-center">
         <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 overflow-hidden flex flex-1 w-full h-full max-w-full max-h-full">
           {/* AI Assistant Container (takes whole width and height of its parent) */}
           <div className="w-full flex flex-col">
@@ -236,25 +255,7 @@ function App() {
             </div>
 
             {/* Chat Header (moved down to accommodate the overlay title) */}
-            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-700/50 mt-[70px]">
-              <div className="flex items-center">
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-2 rounded-lg mr-3">
-                  <MessageSquare className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-xl font-semibold text-white">
-                  AI Assistant
-                </h2>
-              </div>
-              {messages.length > 0 && (
-                <button
-                  onClick={clearChat}
-                  className="text-slate-400 hover:text-slate-300 p-1 rounded transition-colors"
-                  title="Clear chat"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-700/50 mt-[70px]"></div>
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
@@ -284,6 +285,7 @@ function App() {
                     >
                       <div
                         className={`flex max-w-[80%] ${
+                          // This max-w applies to the entire message bubble
                           message.type === "user"
                             ? "flex-row-reverse"
                             : "flex-row"
@@ -308,6 +310,7 @@ function App() {
                               ? "bg-purple-600 text-white"
                               : "bg-slate-700/80 text-slate-200"
                           }`}
+                          style={{ overflowWrap: "break-word" }}
                         >
                           <div className="prose prose-sm max-w-none">
                             {renderMessageContent(message)}
@@ -361,12 +364,14 @@ function App() {
                     value={currentMessage}
                     onChange={(e) => setCurrentMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Paste your code here for review!"
-                    className="w-full p-3 pr-20 bg-slate-900/80 border border-slate-600/50 rounded-xl text-sm text-slate-200 placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
-                    rows="2"
+                    placeholder="Paste your code here for review (Ctrl+V or Cmd+V)" // More descriptive
+                    className="w-full p-4 pr-20 bg-slate-900/80 border border-slate-600/50 rounded-xl text-base text-slate-200 placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300 min-h-[60px]" // Larger padding, font, min-height
+                    rows="3" // Default to 3 rows
                     disabled={chatLoading}
                   />
                   <div className="absolute bottom-3 right-3 text-xs text-slate-500">
+                    Shift+Enter for new line
+                    <br />
                     Enter to send
                   </div>
                 </div>
