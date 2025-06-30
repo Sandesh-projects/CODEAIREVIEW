@@ -9,7 +9,7 @@ module.exports.getReview = async (req, res) => {
     }
     try {
       console.log("calling gemini for response")
-      const response = await aiService.generateContent(code);
+      const response = await aiService.generateCodeReview(code);
       if (!response) {
         return res.status(500).json({ error: 'Failed to generate content' });
       }
