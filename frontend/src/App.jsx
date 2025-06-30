@@ -45,9 +45,12 @@ function App() {
       // ALWAYS send the message for review, no check for backticks
       const codeContent = userMessage.content; // Treat the entire message as code for review
 
-      const response = await axios.post("http://localhost:3000/ai/get-review", {
-        code: codeContent,
-      });
+      const response = await axios.post(
+        "https://codeaireview.onrender.com/ai/get-review",
+        {
+          code: codeContent,
+        }
+      );
       const aiResponseContent =
         response.data.suggestion || "No suggestion received.";
       const newAiMessage = {
